@@ -64,6 +64,7 @@
     "start:crawler": "yarn copy-local-config && ts-node src/index.ts",
     "start:nest": "npm run generate-typings && npm run copy-local-config && nest start",
     "start:devnet": "yarn copy-devnet-config && ts-node src/",
+    "start:devnet:local": "ELROND_API=https://devnet-api.multiversx.com && REDIS_URL=localhost && yarn copy-devnet-config && ts-node src/",
     "start:testnet": "yarn copy-testnet-config && ts-node src/",
     "start:devnet-alpha": "yarn copy-devnet-alpha-config && ts-node src/",
     "start:devnet-beta": "yarn copy-devnet-beta-config && ts-node src/",
