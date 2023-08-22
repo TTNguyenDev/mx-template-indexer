@@ -61,7 +61,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:commonjs": "rimraf lib && tsc --target es5 --outDir lib --module commonjs --declaration",
     "build:es": "rimraf es && tsc --target es6 --outDir es --module es6",
-    "start:crawler": "yarn copy-local-config && ts-node src/index.ts",
+    "start:crawler": "ELROND_API=https://devnet-api.multiversx.com && REDIS_URL=localhost && yarn copy-devnet-config && ts-node src/index.ts",
     "start:nest": "npm run generate-typings && npm run copy-local-config && nest start",
     "start:devnet": "yarn copy-devnet-config && ts-node src/",
     "start:devnet:local": "ELROND_API=https://devnet-api.multiversx.com && REDIS_URL=localhost && yarn copy-devnet-config && ts-node src/",
