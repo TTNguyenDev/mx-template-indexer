@@ -35,7 +35,7 @@ export async function txCount(address: string): Promise<number> {
 export async function TxHashes(
   address: string,
   from: number,
-  size: number
+  size: number,
 ): Promise<[string[], number]> {
   const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}`;
   console.log(req);
@@ -67,7 +67,7 @@ export async function getTransactionDetail(hash: string): Promise<any> {
 
 export async function filterEvent(
   trackingEvent: string[],
-  data: any
+  data: any,
 ): Promise<Event[] | undefined> {
   if (data.logs.events != undefined) {
     let events = data.logs.events;
@@ -80,18 +80,23 @@ export async function filterEvent(
       return false;
     });
 
-    events = events.map((item: any) => {
-      const event: Event = {
-        id: `${data.txHash}_${item.order}`,
-        address: item.address,
-        topics: item.topics,
-        txHash: data.txHash,
-        timestamp: data.timestamp,
-        data: Buffer.from(item.data, "base64"),
-        eventName: atob(item.topics[0].toString()), // Decoded topic is stored in eventName
-      };
-      return event;
-    });
+    events = events
+      .map((item: any) => {
+        if (item.data == undefined) {
+          return undefined;
+        }
+        const event: Event = {
+          id: `${data.txHash}_${item.order}`,
+          address: item.address,
+          topics: item.topics,
+          txHash: data.txHash,
+          timestamp: data.timestamp,
+          data: Buffer.from(item.data, "base64"),
+          eventName: atob(item.topics[0].toString()), // Decoded topic is stored in eventName
+        };
+        return event;
+      })
+      .filter((v: any) => v != undefined);
     return events;
   } else {
     return undefined;
