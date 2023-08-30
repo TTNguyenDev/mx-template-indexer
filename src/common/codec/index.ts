@@ -4,6 +4,7 @@ import {
   BinaryCodec,
   U32Type,
   U8Type,
+  U64Type,
 } from "@multiversx/sdk-core/out";
 
 export function decodeU32(str: string): number {
@@ -16,6 +17,13 @@ export function decodeU32(str: string): number {
 export function decodeU8(str: string): number {
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new U8Type())
+    .valueOf()
+    .toFixed(0);
+}
+
+export function decodeU64(str: string): number {
+  return new BinaryCodec()
+    .decodeTopLevel(Buffer.from(str, "base64"), new U64Type())
     .valueOf()
     .toFixed(0);
 }
