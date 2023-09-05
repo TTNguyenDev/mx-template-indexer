@@ -6,7 +6,7 @@ export class CrawledTransactions {
   id: number;
 
   @Column()
-  abiName: string;
+  abi_name: string;
 
   @Column({ default: 0 })
   count: number;
