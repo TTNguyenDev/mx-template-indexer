@@ -7,6 +7,7 @@ import {
   U64Type,
   I64Type,
   I32Type,
+  BigIntType,
 } from "@multiversx/sdk-core/out";
 
 export function decodeU32(str: string): number {
@@ -47,6 +48,14 @@ export function decodeI32(str: string): number {
 export function decodeBigUint(str: string): string {
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new BigUIntType())
+    .valueOf()
+    .toFixed(0)
+    .toString();
+}
+
+export function decodeBigInt(str: string): string {
+  return new BinaryCodec()
+    .decodeTopLevel(Buffer.from(str, "base64"), new BigIntType())
     .valueOf()
     .toFixed(0)
     .toString();
