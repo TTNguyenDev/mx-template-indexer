@@ -161,6 +161,7 @@ export class Transaction {
           console.log(txCount);
           if (txCount <= begin) {
             console.log("All txs were crawled");
+            await sleep(6000);
             return;
           }
           const size = this.config.getBatchSize();
@@ -197,4 +198,8 @@ export class Transaction {
   }
 
   async saveToDb(events: Event[]) { }
+}
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
