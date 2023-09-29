@@ -2,7 +2,7 @@ import { Config } from "../config";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { CrawledTransactions } from "./../../models/";
-import { DataSource } from "typeorm";
+import { getManager, DataSource, EntityManager } from "typeorm";
 import { AbiRegistry, BinaryCodec } from "@multiversx/sdk-core/out";
 import * as fs from "fs";
 
@@ -131,7 +131,7 @@ export class Transaction {
       return 0;
     }
   }
-  async saveCheckpoint(value: number) {
+  async saveCheckpoint(value: number, entityManager: EntityManager) {
     const repository = this.dataSource.getRepository(CrawledTransactions);
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
 
@@ -139,14 +139,14 @@ export class Transaction {
       // The entity with the specified name was found
       console.log(entity);
       entity.count += value;
-      await repository.save(entity);
+      await entityManager.save(entity);
     } else {
       // No entity with the specified name was found
       console.log("No entity found.");
       const newEntity = new CrawledTransactions();
       newEntity.abi_name = "pairs";
       newEntity.count = value;
-      await repository.save(newEntity);
+      await entityManager.save(newEntity);
     }
     console.log("New checkpoint saved");
   }
@@ -182,10 +182,10 @@ export class Transaction {
                 const events = await Promise.all(acceptedEventsPromises);
                 const acceptedEvents = [].concat(...events); // Flatten the array of arrays.
 
-                // saveToDb will be call after crawling each batch
-                // TODO: checkpoint need to be saved
-                await this.saveToDb(acceptedEvents);
-                await this.saveCheckpoint(count);
+                await getManager().transaction(async (entityManager) => {
+                  await this.saveToDb(acceptedEvents, entityManager);
+                  await this.saveCheckpoint(count, entityManager);
+                });
               })()
             );
           }
@@ -197,7 +197,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[]) { }
+  async saveToDb(events: Event[], entityManager: EntityManager) { }
 }
 
 async function sleep(ms: number) {
