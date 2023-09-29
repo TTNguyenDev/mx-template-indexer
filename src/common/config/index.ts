@@ -20,7 +20,7 @@ export class Config {
   }
 
   getContractAbiPath(key: string): string {
-    console.log(this.data["abi"][key][0]);
+    console.log(`Contract ABI path: ${this.data["abi"][key][0]}`);
     const contractApiPath = this.data["abi"][key][0];
     if (!contractApiPath) {
       throw new Error(`No contract abi path present - ${key}`);
