@@ -159,7 +159,7 @@ export class Transaction {
           const txCount = await this.txCount(address);
           const begin = await this.getCheckpoint();
 
-          console.log(txCount);
+          console.log(`Transactions need to crawl: ${txCount}`);
           if (txCount <= begin) {
             console.log("All txs were crawled");
             await sleep(6000);
