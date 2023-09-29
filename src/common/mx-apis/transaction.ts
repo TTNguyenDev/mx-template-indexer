@@ -52,7 +52,7 @@ export class Transaction {
     size: number
   ): Promise<[string[], number]> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}`;
-    console.log(req);
+    console.log(`Req: ${req}`);
     const txResponse = await axios.get(req);
     const jsonResponse = txResponse.data as any[];
     return [
@@ -122,11 +122,9 @@ export class Transaction {
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
 
     if (entity) {
-      // The entity with the specified name was found
-      console.log(entity);
+      console.log(`getCheckPoint: ${entity}`);
       return entity.count;
     } else {
-      // No entity with the specified name was found
       console.log("No entity found.");
       return 0;
     }
@@ -137,12 +135,10 @@ export class Transaction {
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
 
     if (entity) {
-      // The entity with the specified name was found
-      console.log(entity);
+      console.log(`getCheckPoint: ${entity}`);
       entity.count += value;
       await entityManager.save(entity);
     } else {
-      // No entity with the specified name was found
       console.log("No entity found.");
       const newEntity = new CrawledTransactions();
       newEntity.abi_name = "pairs";
