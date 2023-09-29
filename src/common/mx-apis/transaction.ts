@@ -131,6 +131,7 @@ export class Transaction {
       return 0;
     }
   }
+
   async saveCheckpoint(value: number, entityManager: EntityManager) {
     const repository = this.dataSource.getRepository(CrawledTransactions);
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
