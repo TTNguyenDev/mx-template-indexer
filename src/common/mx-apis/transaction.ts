@@ -49,7 +49,7 @@ export class Transaction {
   async TxHashes(
     address: string,
     from: number,
-    size: number
+    size: number,
   ): Promise<[string[], number]> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}`;
     console.log(`Req: ${req}`);
@@ -81,7 +81,7 @@ export class Transaction {
 
   async filterEvent(
     trackingEvent: string[],
-    data: any
+    data: any,
   ): Promise<Event[] | undefined> {
     if (data.logs.events != undefined) {
       let events = data.logs.events;
@@ -179,22 +179,24 @@ export class Transaction {
                 const events = await Promise.all(acceptedEventsPromises);
                 const acceptedEvents = [].concat(...events); // Flatten the array of arrays.
 
-                await getManager().transaction(async (entityManager) => {
-                  await this.saveToDb(acceptedEvents, entityManager);
-                  await this.saveCheckpoint(count, entityManager);
-                });
-              })()
+                await getManager().transaction(
+                  async (entityManager: EntityManager) => {
+                    await this.saveToDb(acceptedEvents, entityManager);
+                    await this.saveCheckpoint(count, entityManager);
+                  },
+                );
+              })(),
             );
           }
 
           // Wait for all promises to resolve.
           await Promise.all(promises);
-        })
+        }),
       );
     }
   }
 
-  async saveToDb(events: Event[], entityManager: EntityManager) { }
+  async saveToDb(events: Event[], entityManager: EntityManager) {}
 }
 
 async function sleep(ms: number) {
