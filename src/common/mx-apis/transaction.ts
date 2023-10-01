@@ -122,7 +122,7 @@ export class Transaction {
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
 
     if (entity) {
-      console.log(`getCheckPoint: ${entity}`);
+      console.log(`getCheckPoint: ${JSON.stringify(entity)}`);
       return entity.count;
     } else {
       console.log("No entity found.");
@@ -196,7 +196,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], entityManager: EntityManager) {}
+  async saveToDb(events: Event[], entityManager: EntityManager) { }
 }
 
 async function sleep(ms: number) {
