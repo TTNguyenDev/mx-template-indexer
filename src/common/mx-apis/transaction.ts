@@ -153,96 +153,69 @@ export class Transaction {
     console.log("New checkpoint saved");
   }
 
-  async run() {
-    while (true) {
-      await Promise.all(
-        this.addresses.map(async (address) => {
-          const txCount = await this.getTransactionCount(address);
-          const begin = await this.getCheckpoint();
-          const size = this.config.getBatchSize();
-          const maxConcurrency = 20;
-          const retryDelay = 10000; // 10 seconds
-
-          console.log(`Transactions need to crawl: ${txCount}`);
-          if (txCount <= begin) {
-            console.log("All txs were crawled");
-            await sleep(retryDelay);
-            return;
-          }
-
-          const indexes = [];
-          for (let from = begin; from < txCount; from += size) {
-            indexes.push(from);
-          }
-
-          async.eachLimit(
-            indexes,
-            maxConcurrency,
-            async (from: any, callback: any) => {
-              try {
-                const result = await this.getTransactionHashes(
-                  address,
-                  from,
-                  size,
-                );
-                const txHashes = result[0];
-                const count = result[1];
-
-                const acceptedEventsPromises = txHashes.map(async (hash) => {
-                  const txDetails = await this.getTransactionDetail(hash);
-                  return this.filterEvent(this.events, txDetails);
-                });
-
-                const events = await Promise.all(acceptedEventsPromises);
-                const acceptedEvents = [].concat(...events);
-
-                const queryRunner = this.dataSource.createQueryRunner();
-                await queryRunner.startTransaction();
-
-                try {
-                  await this.saveToDb(acceptedEvents, queryRunner);
-                  await this.doSaveCheckpoint(count, queryRunner);
-                  await queryRunner.commitTransaction();
-                } catch (err) {
-                  // since we have errors let's rollback changes we made
-                  await queryRunner.rollbackTransaction();
-                } finally {
-                  // you need to release query runner which is manually created:
-                  await queryRunner.release();
-                }
-
-                if (typeof callback === "function") {
-                  callback();
-                }
-              } catch (err) {
-                if (err.response && err.response.status === 429) {
-                  console.log("Rate limit hit, sleeping for", retryDelay, "ms");
-                  await sleep(retryDelay);
-                  if (typeof callback === "function") {
-                    callback(); // Retry the request
-                  }
-                } else {
-                  console.error("An unexpected error occurred:", err);
-                  if (typeof callback === "function") {
-                    callback(err); // Continue to next iteration
-                  }
-                }
-              }
-            },
-            (err: any) => {
-              if (err) {
-                console.error("Async lib Error - An error occurred:", err);
-              } else {
-                console.log("All tasks for this address are done!");
-              }
-            },
-          );
-        }),
-      );
+  async *batchGenerator(
+    address: string,
+    begin: number,
+    txCount: number,
+    size: number,
+  ) {
+    for (let from = begin; from < txCount; from += size) {
+      yield this.getTransactionHashes(address, from, size);
     }
   }
 
-  async saveToDb(events: Event[], queryRunner: QueryRunner) {}
+  async run() {
+    const delay = 10000;
+    while (true) {
+      for (const address of this.addresses) {
+        const txCount = await this.getTransactionCount(address);
+        const begin = await this.getCheckpoint();
+
+        console.log(txCount);
+        if (txCount <= begin) {
+          console.log("All txs were crawled");
+          sleep(delay);
+          return;
+        }
+
+        for await (const result of this.batchGenerator(
+          address,
+          begin,
+          txCount,
+          this.config.getBatchSize(),
+        )) {
+          const txHashes = result[0];
+          const count = result[1];
+
+          const acceptedEventsPromises = txHashes.map(async (hash) => {
+            const txDetails = await this.getTransactionDetail(hash);
+            return this.filterEvent(this.events, txDetails);
+          });
+
+          const events = await Promise.all(acceptedEventsPromises);
+          const acceptedEvents = [].concat(...events); // Flatten the array of arrays.
+
+          // TODO: checkpoint needs to be saved
+          const queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.startTransaction();
+
+          try {
+            await this.saveToDb(acceptedEvents, queryRunner);
+            await this.doSaveCheckpoint(count, queryRunner);
+            await queryRunner.commitTransaction();
+          } catch (err) {
+            // since we have errors let's rollback changes we made
+            await queryRunner.rollbackTransaction();
+          } finally {
+            // you need to release query runner which is manually created:
+            await queryRunner.release();
+          }
+        }
+      }
+    }
+  }
+
+  async saveToDb(events: Event[], queryRunner: QueryRunner) { }
 }
 
 async function sleep(ms: number) {
