@@ -41,13 +41,13 @@ export class Transaction {
     const data = fs.readFileSync(path, { encoding: "utf-8" });
     return AbiRegistry.create(JSON.parse(data));
   }
-  async txCount(address: string): Promise<number> {
+  async getTransactionCount(address: string): Promise<number> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers/count`;
     const response = await axios.get(req);
     return response.data;
   }
 
-  async TxHashes(
+  async getTransactionHashes(
     address: string,
     from: number,
     size: number,
@@ -107,7 +107,7 @@ export class Transaction {
             txHash: data.txHash,
             timestamp: data.timestamp,
             data: Buffer.from(item.data, "base64"),
-            eventName: atob(item.topics[0].toString()), // Decoded topic is stored in eventName
+            eventName: atob(item.topics[0].toString()),
           };
           return event;
         })
@@ -133,7 +133,7 @@ export class Transaction {
     }
   }
 
-  async saveCheckpoint(value: number, queryRunner: QueryRunner) {
+  async doSaveCheckpoint(value: number, queryRunner: QueryRunner) {
     const repository = this.dataSource.getRepository(CrawledTransactions);
     const entity = await repository.findOne({
       where: { abi_name: this.abi.name },
@@ -157,7 +157,7 @@ export class Transaction {
     while (true) {
       await Promise.all(
         this.addresses.map(async (address) => {
-          const txCount = await this.txCount(address);
+          const txCount = await this.getTransactionCount(address);
           const begin = await this.getCheckpoint();
           const size = this.config.getBatchSize();
           const maxConcurrency = 20;
@@ -166,7 +166,7 @@ export class Transaction {
           console.log(`Transactions need to crawl: ${txCount}`);
           if (txCount <= begin) {
             console.log("All txs were crawled");
-            await sleep(6000);
+            await sleep(retryDelay);
             return;
           }
 
@@ -180,7 +180,11 @@ export class Transaction {
             maxConcurrency,
             async (from: any, callback: any) => {
               try {
-                const result = await this.TxHashes(address, from, size);
+                const result = await this.getTransactionHashes(
+                  address,
+                  from,
+                  size,
+                );
                 const txHashes = result[0];
                 const count = result[1];
 
@@ -197,7 +201,7 @@ export class Transaction {
 
                 try {
                   await this.saveToDb(acceptedEvents, queryRunner);
-                  await this.saveCheckpoint(count, queryRunner);
+                  await this.doSaveCheckpoint(count, queryRunner);
                   await queryRunner.commitTransaction();
                 } catch (err) {
                   // since we have errors let's rollback changes we made
@@ -238,7 +242,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], queryRunner: QueryRunner) { }
+  async saveToDb(events: Event[], queryRunner: QueryRunner) {}
 }
 
 async function sleep(ms: number) {
