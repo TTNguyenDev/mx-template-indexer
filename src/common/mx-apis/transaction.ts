@@ -2,7 +2,7 @@ import { Config } from "../config";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { CrawledTransactions } from "./../../models/";
-import { getManager, DataSource, EntityManager } from "typeorm";
+import { getManager, DataSource, QueryRunner } from "typeorm";
 import { AbiRegistry, BinaryCodec } from "@multiversx/sdk-core/out";
 import * as fs from "fs";
 import async from "async";
@@ -131,20 +131,20 @@ export class Transaction {
     }
   }
 
-  async saveCheckpoint(value: number, entityManager: EntityManager) {
+  async saveCheckpoint(value: number, queryRunner: QueryRunner) {
     const repository = this.dataSource.getRepository(CrawledTransactions);
     const entity = await repository.findOne({ where: { abi_name: "pairs" } });
 
     if (entity) {
       console.log(`saveCheckPoint: ${JSON.stringify(entity)}`);
       entity.count += value;
-      await entityManager.save(entity);
+      await queryRunner.manager.save(entity);
     } else {
       console.log("No entity found.");
       const newEntity = new CrawledTransactions();
       newEntity.abi_name = "pairs";
       newEntity.count = value;
-      await entityManager.save(newEntity);
+      await queryRunner.manager.save(newEntity);
     }
     console.log("New checkpoint saved");
   }
@@ -234,7 +234,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], entityManager: EntityManager) {}
+  async saveToDb(events: Event[], queryRunner: QueryRunner) { }
 }
 
 async function sleep(ms: number) {
