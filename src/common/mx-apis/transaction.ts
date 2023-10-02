@@ -120,7 +120,9 @@ export class Transaction {
 
   async getCheckpoint(): Promise<number> {
     const repository = this.dataSource.getRepository(CrawledTransactions);
-    const entity = await repository.findOne({ where: { abi_name: "pairs" } });
+    const entity = await repository.findOne({
+      where: { abi_name: this.abi.name },
+    });
 
     if (entity) {
       console.log(`getCheckPoint: ${JSON.stringify(entity)}`);
@@ -133,7 +135,9 @@ export class Transaction {
 
   async saveCheckpoint(value: number, queryRunner: QueryRunner) {
     const repository = this.dataSource.getRepository(CrawledTransactions);
-    const entity = await repository.findOne({ where: { abi_name: "pairs" } });
+    const entity = await repository.findOne({
+      where: { abi_name: this.abi.name },
+    });
 
     if (entity) {
       console.log(`saveCheckPoint: ${JSON.stringify(entity)}`);
@@ -142,7 +146,7 @@ export class Transaction {
     } else {
       console.log("No entity found.");
       const newEntity = new CrawledTransactions();
-      newEntity.abi_name = "pairs";
+      newEntity.abi_name = this.abi.name;
       newEntity.count = value;
       await queryRunner.manager.save(newEntity);
     }
