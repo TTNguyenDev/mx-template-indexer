@@ -5,6 +5,7 @@ import { CrawledTransactions } from "./../../models/";
 import { getManager, DataSource, EntityManager } from "typeorm";
 import { AbiRegistry, BinaryCodec } from "@multiversx/sdk-core/out";
 import * as fs from "fs";
+import async from "async";
 
 const config = new Config("./config/config.yaml");
 
@@ -154,6 +155,8 @@ export class Transaction {
         this.addresses.map(async (address) => {
           const txCount = await this.txCount(address);
           const begin = await this.getCheckpoint();
+          const size = this.config.getBatchSize();
+          const maxConcurrency = 20; // Set your concurrency limit here
 
           console.log(`Transactions need to crawl: ${txCount}`);
           if (txCount <= begin) {
@@ -161,36 +164,47 @@ export class Transaction {
             await sleep(6000);
             return;
           }
-          const size = this.config.getBatchSize();
 
-          const promises = [];
+          // Generate an array of indexes for batching
+          const indexes = [];
           for (let from = begin; from < txCount; from += size) {
-            promises.push(
-              (async () => {
-                const result = await this.TxHashes(address, from, size);
-                const txHashes = result[0];
-                const count = result[1];
-
-                const acceptedEventsPromises = txHashes.map(async (hash) => {
-                  const txDetails = await this.getTransactionDetail(hash);
-                  return this.filterEvent(this.events, txDetails);
-                });
-
-                const events = await Promise.all(acceptedEventsPromises);
-                const acceptedEvents = [].concat(...events); // Flatten the array of arrays.
-
-                await getManager().transaction(
-                  async (entityManager: EntityManager) => {
-                    await this.saveToDb(acceptedEvents, entityManager);
-                    await this.saveCheckpoint(count, entityManager);
-                  },
-                );
-              })(),
-            );
+            indexes.push(from);
           }
 
-          // Wait for all promises to resolve.
-          await Promise.all(promises);
+          // Process batches with limited concurrency
+          async.eachLimit(
+            indexes,
+            maxConcurrency,
+            async (from: any, callback: any) => {
+              const result = await this.TxHashes(address, from, size);
+              const txHashes = result[0];
+              const count = result[1];
+
+              const acceptedEventsPromises = txHashes.map(async (hash) => {
+                const txDetails = await this.getTransactionDetail(hash);
+                return this.filterEvent(this.events, txDetails);
+              });
+
+              const events = await Promise.all(acceptedEventsPromises);
+              const acceptedEvents = [].concat(...events); // Flatten array of arrays
+
+              await getManager().transaction(
+                async (entityManager: EntityManager) => {
+                  await this.saveToDb(acceptedEvents, entityManager);
+                  await this.saveCheckpoint(count, entityManager);
+                },
+              );
+
+              callback(); // Notify async lib that this iteration is done
+            },
+            (err: any) => {
+              if (err) {
+                console.error("An error occurred:", err);
+              } else {
+                console.log("All tasks for this address are done!");
+              }
+            },
+          );
         }),
       );
     }
