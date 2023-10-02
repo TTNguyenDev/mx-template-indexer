@@ -156,7 +156,8 @@ export class Transaction {
           const txCount = await this.txCount(address);
           const begin = await this.getCheckpoint();
           const size = this.config.getBatchSize();
-          const maxConcurrency = 20; // Set your concurrency limit here
+          const maxConcurrency = 20;
+          const retryDelay = 10000; // 10 seconds
 
           console.log(`Transactions need to crawl: ${txCount}`);
           if (txCount <= begin) {
@@ -165,41 +166,64 @@ export class Transaction {
             return;
           }
 
-          // Generate an array of indexes for batching
           const indexes = [];
           for (let from = begin; from < txCount; from += size) {
             indexes.push(from);
           }
 
-          // Process batches with limited concurrency
           async.eachLimit(
             indexes,
             maxConcurrency,
             async (from: any, callback: any) => {
-              const result = await this.TxHashes(address, from, size);
-              const txHashes = result[0];
-              const count = result[1];
+              try {
+                const result = await this.TxHashes(address, from, size);
+                const txHashes = result[0];
+                const count = result[1];
 
-              const acceptedEventsPromises = txHashes.map(async (hash) => {
-                const txDetails = await this.getTransactionDetail(hash);
-                return this.filterEvent(this.events, txDetails);
-              });
+                const acceptedEventsPromises = txHashes.map(async (hash) => {
+                  const txDetails = await this.getTransactionDetail(hash);
+                  return this.filterEvent(this.events, txDetails);
+                });
 
-              const events = await Promise.all(acceptedEventsPromises);
-              const acceptedEvents = [].concat(...events); // Flatten array of arrays
+                const events = await Promise.all(acceptedEventsPromises);
+                const acceptedEvents = [].concat(...events);
 
-              await getManager().transaction(
-                async (entityManager: EntityManager) => {
-                  await this.saveToDb(acceptedEvents, entityManager);
-                  await this.saveCheckpoint(count, entityManager);
-                },
-              );
+                const queryRunner = this.dataSource.createQueryRunner();
+                await queryRunner.startTransaction();
 
-              callback(); // Notify async lib that this iteration is done
+                try {
+                  await this.saveToDb(acceptedEvents, queryRunner);
+                  await this.saveCheckpoint(count, queryRunner);
+                  await queryRunner.commitTransaction();
+                } catch (err) {
+                  // since we have errors let's rollback changes we made
+                  await queryRunner.rollbackTransaction();
+                } finally {
+                  // you need to release query runner which is manually created:
+                  await queryRunner.release();
+                }
+
+                if (typeof callback === "function") {
+                  callback();
+                }
+              } catch (err) {
+                if (err.response && err.response.status === 429) {
+                  console.log("Rate limit hit, sleeping for", retryDelay, "ms");
+                  await sleep(retryDelay);
+                  if (typeof callback === "function") {
+                    callback(); // Retry the request
+                  }
+                } else {
+                  console.error("An unexpected error occurred:", err);
+                  if (typeof callback === "function") {
+                    callback(err); // Continue to next iteration
+                  }
+                }
+              }
             },
             (err: any) => {
               if (err) {
-                console.error("An error occurred:", err);
+                console.error("Async lib Error - An error occurred:", err);
               } else {
                 console.log("All tasks for this address are done!");
               }
