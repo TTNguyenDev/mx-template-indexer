@@ -44,6 +44,9 @@ export class Transaction {
   async getTransactionCount(address: string): Promise<number> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers/count`;
     const response = await axios.get(req);
+    console.log(
+      `[${this.abi.name}][getTransactionCount] address: ${address} count: ${response.data}`,
+    );
     return response.data;
   }
 
@@ -53,7 +56,7 @@ export class Transaction {
     size: number,
   ): Promise<[string[], number]> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}&order=asc`;
-    console.log(`Req: ${req}`);
+    console.log(`[${this.abi.name}][getTransactionHashes] ${req}`);
     const txResponse = await axios.get(req);
     const jsonResponse = txResponse.data as any[];
     return [
@@ -125,10 +128,12 @@ export class Transaction {
     });
 
     if (entity) {
-      console.log(`getCheckPoint: ${JSON.stringify(entity)}`);
+      console.log(
+        `[${this.abi.name}][getCheckpoint] ${JSON.stringify(entity)}`,
+      );
       return entity.count;
     } else {
-      console.log("No entity found.");
+      console.log(`[${this.abi.name}][getCheckpoint] No entity found.`);
       return 0;
     }
   }
@@ -140,17 +145,21 @@ export class Transaction {
     });
 
     if (entity) {
-      console.log(`saveCheckPoint: ${JSON.stringify(entity)}`);
       entity.count += value;
+      console.log(
+        `[${this.abi.name}][doSaveCheckPoint] ${JSON.stringify(
+          entity,
+        )} UpdatedValue ${entity.count}`,
+      );
       await queryRunner.manager.save(entity);
     } else {
-      console.log("No entity found.");
+      console.log(`[${this.abi.name}][doSaveCheckpoint] No entity found.`);
       const newEntity = new CrawledTransactions();
       newEntity.abi_name = this.abi.name;
       newEntity.count = value;
       await queryRunner.manager.save(newEntity);
     }
-    console.log("New checkpoint saved");
+    console.log(`[${this.abi.name}][doSaveCheckpoint] New checkpoint saved.`);
   }
 
   async *batchGenerator(
@@ -171,9 +180,8 @@ export class Transaction {
         const txCount = await this.getTransactionCount(address);
         const begin = await this.getCheckpoint();
 
-        console.log(txCount);
         if (txCount <= begin) {
-          console.log("All txs were crawled");
+          console.log(`[${this.abi.name}][run] All txs were crawled.`);
           sleep(delay);
           return;
         }
