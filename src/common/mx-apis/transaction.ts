@@ -56,9 +56,11 @@ export class Transaction {
     size: number,
   ): Promise<[string[], number]> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}&order=asc`;
-    console.log(`[${this.abi.name}][getTransactionHashes] ${req}`);
     const txResponse = await axios.get(req);
     const jsonResponse = txResponse.data as any[];
+    console.log(
+      `[${this.abi.name}][getTransactionHashes] ${req} ${jsonResponse}`,
+    );
     return [
       jsonResponse
         .map((tx: any) => {
