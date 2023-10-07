@@ -59,7 +59,9 @@ export class Transaction {
     const txResponse = await axios.get(req);
     const jsonResponse = txResponse.data as any[];
     console.log(
-      `[${this.abi.name}][getTransactionHashes] ${req} ${jsonResponse}`,
+      `[${this.abi.name}][getTransactionHashes] ${req} ${JSON.stringify(
+        jsonResponse,
+      )}`,
     );
     return [
       jsonResponse
