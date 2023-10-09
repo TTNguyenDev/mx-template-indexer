@@ -58,11 +58,7 @@ export class Transaction {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers?from=${from}&size=${size}&order=asc`;
     const txResponse = await axios.get(req);
     const jsonResponse = txResponse.data as any[];
-    console.log(
-      `[${this.abi.name}][getTransactionHashes] ${req} ${JSON.stringify(
-        jsonResponse,
-      )}`,
-    );
+    console.log(`[${this.abi.name}][getTransactionHashes] ${req} }`);
     return [
       jsonResponse
         .map((tx: any) => {
@@ -227,7 +223,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], queryRunner: QueryRunner) {}
+  async saveToDb(events: Event[], queryRunner: QueryRunner) { }
 }
 
 async function sleep(ms: number) {
