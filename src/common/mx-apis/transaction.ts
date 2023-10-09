@@ -174,7 +174,7 @@ export class Transaction {
   }
 
   async run() {
-    const delay = 10000;
+    const delay = 6000; //6 seconds
     while (true) {
       for (const address of this.addresses) {
         const txCount = await this.getTransactionCount(address);
