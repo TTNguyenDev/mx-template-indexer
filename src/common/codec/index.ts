@@ -46,6 +46,9 @@ export function decodeI32(str: string): number {
 }
 
 export function decodeBigUint(str: string): string {
+  if (str == undefined) {
+    return "";
+  }
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new BigUIntType())
     .valueOf()
