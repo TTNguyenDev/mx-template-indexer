@@ -2,10 +2,9 @@ import { Config } from "../config";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { CrawledTransactions } from "./../../models/";
-import { getManager, DataSource, QueryRunner } from "typeorm";
-import { AbiRegistry, BinaryCodec } from "@multiversx/sdk-core/out";
+import { DataSource, QueryRunner } from "typeorm";
+import { AbiRegistry } from "@multiversx/sdk-core/out";
 import * as fs from "fs";
-import async from "async";
 
 const config = new Config("./config/config.yaml");
 

@@ -11,6 +11,10 @@ import {
 } from "@multiversx/sdk-core/out";
 
 export function decodeU32(str: string): number {
+  if (str == undefined) {
+    return -1;
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new U32Type())
     .valueOf()
@@ -18,6 +22,10 @@ export function decodeU32(str: string): number {
 }
 
 export function decodeU8(str: string): number {
+  if (str == undefined) {
+    return -1;
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new U8Type())
     .valueOf()
@@ -25,6 +33,10 @@ export function decodeU8(str: string): number {
 }
 
 export function decodeU64(str: string): number {
+  if (str == undefined) {
+    return -1;
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new U64Type())
     .valueOf()
@@ -32,6 +44,10 @@ export function decodeU64(str: string): number {
 }
 
 export function decodeI64(str: string): number {
+  if (str == undefined) {
+    return -1;
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new I64Type())
     .valueOf()
@@ -39,6 +55,10 @@ export function decodeI64(str: string): number {
 }
 
 export function decodeI32(str: string): number {
+  if (str == undefined) {
+    return -1;
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new I32Type())
     .valueOf()
@@ -57,6 +77,10 @@ export function decodeBigUint(str: string): string {
 }
 
 export function decodeBigInt(str: string): string {
+  if (str == undefined) {
+    return "";
+  }
+
   return new BinaryCodec()
     .decodeTopLevel(Buffer.from(str, "base64"), new BigIntType())
     .valueOf()
