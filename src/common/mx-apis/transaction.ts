@@ -181,8 +181,8 @@ export class Transaction {
 
         if (txCount <= begin) {
           console.log(`[${this.abi.name}][run] All txs were crawled.`);
-          sleep(delay);
-          return;
+          await sleep(delay);
+          break;
         }
 
         for await (const result of this.batchGenerator(
@@ -222,7 +222,7 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], queryRunner: QueryRunner) { }
+  async saveToDb(events: Event[], queryRunner: QueryRunner) {}
 }
 
 async function sleep(ms: number) {
