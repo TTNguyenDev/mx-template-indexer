@@ -3,8 +3,9 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 import { CrawledTransactions } from "./../../models/";
 import { DataSource, QueryRunner } from "typeorm";
-import { AbiRegistry } from "@multiversx/sdk-core/out";
+import { AbiRegistry, Address, SmartContract } from "@multiversx/sdk-core/out";
 import * as fs from "fs";
+import { ApiNetworkProvider } from "@multiversx/sdk-network-providers/out";
 
 const config = new Config("./config/config.yaml");
 
@@ -29,17 +30,42 @@ export interface Event {
   eventName?: string;
 }
 
-export class Transaction {
+export class MxAPIs {
   dataSource: DataSource;
   addresses: string[];
   events: string[];
   abi: AbiRegistry;
   config: Config;
+  sc: SmartContract[];
+  provider: ApiNetworkProvider;
 
-  getAbiRegistry(path: string): AbiRegistry | undefined {
+  constructor(contractName: string, config: Config, dataSource: DataSource) {
+    const abiPath = config.getContractAbiPath(contractName);
+    this.addresses = config.getContractAddress(contractName);
+
+    const abiRegistry = this.getAbiRegistry(abiPath);
+    if (abiRegistry != undefined) {
+      this.abi = abiRegistry;
+      this.sc = this.addresses.map((i) => this.getSC(i, abiRegistry));
+    }
+
+    this.dataSource = dataSource;
+    this.config = config;
+    this.provider = new ApiNetworkProvider(config.getApiUrl());
+  }
+
+  private getAbiRegistry(path: string): AbiRegistry | undefined {
     const data = fs.readFileSync(path, { encoding: "utf-8" });
     return AbiRegistry.create(JSON.parse(data));
   }
+
+  private getSC(address: string, abiRegistry: AbiRegistry) {
+    return new SmartContract({
+      address: new Address(address),
+      abi: abiRegistry,
+    });
+  }
+
   async getTransactionCount(address: string): Promise<number> {
     const req = `${config.getApiUrl()}/accounts/${address}/transfers/count`;
     const response = await axios.get(req);
@@ -173,7 +199,7 @@ export class Transaction {
   }
 
   async run() {
-    const delay = 6000; //6 seconds
+    const delay = 6000;
     while (true) {
       for (const address of this.addresses) {
         const txCount = await this.getTransactionCount(address);
@@ -207,7 +233,7 @@ export class Transaction {
           await queryRunner.startTransaction();
 
           try {
-            await this.saveToDb(acceptedEvents, queryRunner);
+            await this.saveEvents(acceptedEvents, queryRunner);
             await this.doSaveCheckpoint(count, queryRunner);
             await queryRunner.commitTransaction();
           } catch (err) {
@@ -222,9 +248,32 @@ export class Transaction {
     }
   }
 
-  async saveToDb(events: Event[], queryRunner: QueryRunner) {}
+  //TODO: Handle edge cases
+  async runSnapshot() {
+    while (true) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.startTransaction();
+
+      try {
+        await this.saveSnapshot(queryRunner);
+        await queryRunner.commitTransaction();
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+      } finally {
+        await queryRunner.release();
+      }
+    }
+  }
+
+  async saveEvents(events: Event[], queryRunner: QueryRunner) {
+    // Abstract method
+  }
+
+  async saveSnapshot(queryRunner: QueryRunner) {
+    //Abstract method
+  }
 }
 
-async function sleep(ms: number) {
+export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
